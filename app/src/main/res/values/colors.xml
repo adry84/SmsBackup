@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="colorPrimary">#4052B5</color>
+    <color name="colorSecond">#E0AB3A</color>
+    <color name="colorThird">#C0C0FE</color>
+    <color name="colorPrimaryDark">#4052B5</color>
+    <color name="colorAccent">#E0AB3A</color>
+</resources>
