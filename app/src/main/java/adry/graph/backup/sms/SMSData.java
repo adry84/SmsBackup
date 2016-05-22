@@ -3,9 +3,6 @@ package adry.graph.backup.sms;
 import android.os.Build;
 import android.provider.Telephony;
 
-import java.text.SimpleDateFormat;
-import java.util.Locale;
-
 /**
  * Created by Audrey on 14/05/2016.
  * SmsData Model
@@ -62,38 +59,8 @@ public class SMSData {
         return false;
     }
 
-    //uncoment and improve if we want to export as json object
-//    public JSONObject toJSON() throws Exception{
-//        JSONObject smsObj = new JSONObject();
-//        smsObj.put("number", mNumber);
-//        if (mDateReceived != 0l) {
-//            smsObj.put("dateSent", mDateSent);
-//        }
-//        if (mDateReceived != 0l) {
-//            smsObj.put("dateReceived", mDateReceived);
-//        }
-//        smsObj.put("message", mMessage);
-//        return smsObj;
-//    }
-
-    public String toHTML() throws Exception{
-        boolean isMessageTypeSent = isMessageTypeSent();
-        String typeMsgClass = isMessageTypeSent ? "sendMsg" : "otherMsg";
-        SimpleDateFormat dateFormatter = new SimpleDateFormat("dd/MM/yyyy", Locale.FRANCE);
-
-        StringBuilder sb = new StringBuilder();
-        sb.append("<div class='").append(typeMsgClass).append("'>");
-        sb.append("<b>").append(mNumber).append("</b>");
-        if (mDateReceived != 0L) {
-            sb.append(" - <span class='dateReceived'>").append(dateFormatter.format(mDateReceived)).append("</span>");
-        }
-        if (mDateSent != 0L) {
-            sb.append(" - <span class='dateSent'>").append(dateFormatter.format(mDateSent)).append("</span>");
-        }
-        sb.append("<br>");
-        sb.append(mMessage).append("<br>");
-        sb.append("</div>");
-        return sb.toString();
+    public int getMessageType() {
+        return mMessageType;
     }
 
     public void setMessageType(int messageType) {

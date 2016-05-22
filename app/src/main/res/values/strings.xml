@@ -1,4 +1,5 @@
 <resources>
     <string name="app_name">SmsBackup</string>
     <string name="save">SAVE</string>
+    <string name="export_prompt">Choose the export format</string>
 </resources>

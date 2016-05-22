@@ -10,10 +10,12 @@ import android.support.annotation.NonNull;
 import android.support.annotation.Nullable;
 import android.util.Log;
 
+import java.io.BufferedWriter;
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
-import java.io.OutputStream;
+import java.io.OutputStreamWriter;
+import java.io.Writer;
 
 /**
  * Created by Audrey on 14/05/2016.
@@ -23,6 +25,46 @@ public class SmsBackupProvider extends ContentProvider{
 
 
     private static final String TAG = "SmsBackupProvider";
+    private static final String FILE_NAME = "SmsBackup";
+
+    public static File saveSmsBackupFile(Context context, String data, String extension) throws Exception {
+        Writer out = null;
+        try {
+            File outFile = getSmsBackupFile(context, FILE_NAME + "." + extension);
+            out = new BufferedWriter(new OutputStreamWriter(
+                    new FileOutputStream(outFile.getAbsolutePath()), "UTF-8"));
+
+            out.write(data);
+
+            return outFile;
+
+        } catch (Exception e) {
+            Log.e(TAG, "saveSmsBackupFile: ", e);
+            throw e;
+        } finally {
+            if (out != null) {
+                out.close();
+            }
+        }
+    }
+
+    public static File getSmsBackupFile(Context context, String fileName) throws Exception {
+        File filePath = new File(context.getFilesDir(), "backups");
+        if (!filePath.exists()) {
+            boolean hasMakeDir = filePath.mkdir();
+            if (!hasMakeDir) {
+                throw new Exception("Cannot create sms backup directory");
+            }
+        }
+        File newFile = new File(filePath, fileName);
+        if (!newFile.exists()) {
+            boolean hasMakeDir = newFile.createNewFile();
+            if (!hasMakeDir) {
+                throw new Exception("Cannot create sms backup file");
+            }
+        }
+        return newFile;
+    }
 
     @Override
     public boolean onCreate() {
@@ -64,54 +106,19 @@ public class SmsBackupProvider extends ContentProvider{
     @Nullable
     @Override
     public ParcelFileDescriptor openFile(@NonNull Uri uri, @NonNull String mode) throws FileNotFoundException {
-
+        if (uri.getPath() == null) {
+            return null;
+        }
         try {
-            File privateFile = getSmsBackupFile(getContext());
+            String fileName = uri.getPath().substring(uri.getPath().lastIndexOf("/") + 1);
+            if (!fileName.startsWith(FILE_NAME)) {
+                return null;
+            }
+            File privateFile = getSmsBackupFile(getContext(), fileName);
             return ParcelFileDescriptor.open(privateFile, ParcelFileDescriptor.MODE_READ_ONLY);
         } catch (Exception e) {
             e.printStackTrace();
         }
         return null;
-    }
-
-
-    public static File saveSmsBackupFile(Context context, String data) throws Exception{
-        OutputStream outputStream = null;
-        try {
-            File outFile = getSmsBackupFile(context);
-
-            outputStream = new FileOutputStream(outFile.getAbsolutePath());
-
-            outputStream.write(data.getBytes());
-
-            return outFile;
-
-        } catch (Exception e) {
-            Log.e(TAG, "saveSmsBackupFile: ", e);
-            throw e;
-        } finally {
-            if (outputStream != null)  {
-                outputStream.close();
-            }
-        }
-    }
-
-    public static File getSmsBackupFile(Context context) throws Exception {
-        File filePath =  new File(context.getFilesDir(), "backups");
-        if (!filePath.exists()) {
-            boolean hasMakeDir = filePath.mkdir();
-            if (!hasMakeDir) {
-                throw new Exception("Cannot create sms backup directory");
-            }
-        }
-        String fileName = "SMSBackup.txt";
-        File newFile = new File(filePath, fileName);
-        if (!newFile.exists()) {
-            boolean hasMakeDir = newFile.createNewFile();
-            if (!hasMakeDir) {
-                throw new Exception("Cannot create sms backup file");
-            }
-        }
-        return newFile;
     }
 }

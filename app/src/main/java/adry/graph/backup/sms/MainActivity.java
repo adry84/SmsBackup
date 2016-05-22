@@ -12,6 +12,7 @@ import android.support.v7.widget.RecyclerView;
 import android.util.Log;
 import android.view.View;
 import android.widget.Button;
+import android.widget.Spinner;
 
 import java.io.File;
 import java.util.List;
@@ -20,6 +21,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
 
     private static final String TAG = "MainActivity";
     private Button mSaveButton;
+    private Spinner mExportFormatSpinner;
     private SmsListAdapter mSmsAdapter;
     private List<SMSData> mSmsList;
 
@@ -33,6 +35,9 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
             finish();
         }
 
+        mExportFormatSpinner = (Spinner) findViewById(R.id.activity_main_export_chooser_s);
+        FormatArrayAdapter dataAdapter = new FormatArrayAdapter(this);
+        mExportFormatSpinner.setAdapter(dataAdapter);
 
         mSaveButton = (Button) findViewById(R.id.activity_main_save_b);
         assert mSaveButton != null;
@@ -94,30 +99,22 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
             public void run() {
 
                 try {
-                    //in case we need json
-//                    JSONArray jsonData = new JSONArray();
-//                    for (SMSData sms : mSmsList) {
-//                        jsonData.put(sms.toJSON());
-//                    }
-//                    String smsListToString =  jsonData.toString();
-
-                    StringBuilder sb = new StringBuilder();
-                    sb.append("<html> <meta charset=\"UTF-8\"> <head><style type=\"text/CSS\">" +
-                            "body {font-family:sans-serif;} " +
-                            ".dateSent {color:#B4BBC4;} " +
-                            ".dateReceived {color:#9AB2D3;} " +
-                            ".sendMsg {color:#8AB5F2;} " +
-                            ".otherMsg {color:#4052B5;}" +
-                            "</style></head><body>");
-                    for (SMSData sms : mSmsList) {
-                        sb.append(sms.toHTML());
-                        sb.append("<br>");
+                    String smsListToString;
+                    ExportFormat typeConversion = (ExportFormat) mExportFormatSpinner.getSelectedItem();
+                    switch (typeConversion) {
+                        case CONVERSION_TYPE_CSV:
+                            smsListToString = SMSDataUtils.SMSDataListToCSV(mSmsList);
+                            break;
+                        case CONVERSION_TYPE_HTML:
+                            smsListToString = SMSDataUtils.SMSDataListToHTML(mSmsList);
+                            break;
+                        case CONVERSION_TYPE_JSON:
+                            smsListToString = SMSDataUtils.SMSDataListToJson(mSmsList);
+                            break;
+                        default:
+                            smsListToString = SMSDataUtils.SMSDataListToText(mSmsList);
                     }
-                    sb.append("</body></html>");
-                    String smsListToString =  sb.toString();
-
-                    final File file = SmsBackupProvider.saveSmsBackupFile(MainActivity.this, smsListToString);
-
+                    final File file = SmsBackupProvider.saveSmsBackupFile(MainActivity.this, smsListToString, typeConversion.getExtension());
                     runOnUiThread(new Runnable() {
                         @Override
                         public void run() {
