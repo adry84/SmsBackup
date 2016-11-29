@@ -4,6 +4,7 @@ import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.net.Uri;
 import android.os.Bundle;
+import android.support.v4.app.ActivityCompat;
 import android.support.v4.content.ContextCompat;
 import android.support.v4.content.FileProvider;
 import android.support.v7.app.AppCompatActivity;
@@ -12,7 +13,9 @@ import android.support.v7.widget.RecyclerView;
 import android.util.Log;
 import android.view.View;
 import android.widget.Button;
+import android.widget.ProgressBar;
 import android.widget.Spinner;
+import android.widget.Toast;
 
 import java.io.File;
 import java.util.List;
@@ -20,20 +23,21 @@ import java.util.List;
 public class MainActivity extends AppCompatActivity implements View.OnClickListener {
 
     private static final String TAG = "MainActivity";
+    private static final int REQUEST_CODE_ASK_PERMISSIONS = 123;
     private Button mSaveButton;
+    private ProgressBar mLoaderPb;
     private Spinner mExportFormatSpinner;
     private SmsListAdapter mSmsAdapter;
     private List<SMSData> mSmsList;
+    private Thread mWriteSmsFileThread;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
-        if(ContextCompat.checkSelfPermission(getBaseContext(), "android.permission.READ_SMS")
-                != PackageManager.PERMISSION_GRANTED) {
-            finish();
-        }
+        mLoaderPb = (ProgressBar) findViewById(R.id.activity_main_loader_pb);
+        mLoaderPb.setVisibility(View.GONE);
 
         mExportFormatSpinner = (Spinner) findViewById(R.id.activity_main_export_chooser_s);
         FormatArrayAdapter dataAdapter = new FormatArrayAdapter(this);
@@ -57,23 +61,43 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         recyclerView.setAdapter(mSmsAdapter);
 
         getSms();
+
         mSaveButton.setOnClickListener(this);
     }
 
+    @Override
+    public void onRequestPermissionsResult(int requestCode, String[] permissions, int[] grantResults) {
+        switch (requestCode) {
+            case REQUEST_CODE_ASK_PERMISSIONS:
+                if (grantResults[0] == PackageManager.PERMISSION_GRANTED) {
+                    // Permission Granted
+                    getSms();
+                } else {
+                    // Permission Denied
+                    Toast.makeText(MainActivity.this, "Cannot read sms without permissions", Toast.LENGTH_SHORT).show();
+                }
+                break;
+            default:
+                super.onRequestPermissionsResult(requestCode, permissions, grantResults);
+        }
+    }
     private void getSms() {
-        new Thread(new Runnable() {
-            @Override
-            public void run() {
-                mSmsList = SmsBackupTask.getSmsList(getApplicationContext());
-               runOnUiThread(new Runnable() {
-                   @Override
-                   public void run() {
-                       updateSmsListUI();
-                   }
-               });
-            }
-        }).run();
-
+        if(ContextCompat.checkSelfPermission(getBaseContext(), "android.permission.READ_SMS") == PackageManager.PERMISSION_GRANTED) {
+            new Thread(new Runnable() {
+                @Override
+                public void run() {
+                    mSmsList = SmsBackupTask.getSmsList(getApplicationContext());
+                    runOnUiThread(new Runnable() {
+                        @Override
+                        public void run() {
+                            updateSmsListUI();
+                        }
+                    });
+                }
+            }).run();
+        } else {
+            ActivityCompat.requestPermissions(MainActivity.this, new String[]{"android.permission.READ_SMS"}, REQUEST_CODE_ASK_PERMISSIONS);
+        }
     }
 
     private void updateSmsListUI() {
@@ -94,10 +118,10 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         if (mSmsList == null || mSmsList.size() == 0) {
             return;
         }
-        new Thread(new Runnable() {
+        mLoaderPb.setVisibility(View.VISIBLE);
+        mWriteSmsFileThread = new Thread(new Runnable() {
             @Override
             public void run() {
-
                 try {
                     String smsListToString;
                     ExportFormat typeConversion = (ExportFormat) mExportFormatSpinner.getSelectedItem();
@@ -124,16 +148,18 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
                 } catch (Exception e) {
                     Log.e(TAG, "run: error transform to json", e);
                     e.printStackTrace();
-
-
                 }
-
-
             }
-        }).run();
+        });
+        mWriteSmsFileThread.run();
+    }
+
+    boolean isWriteSmsFileThreadAlive() {
+        return mWriteSmsFileThread != null && mWriteSmsFileThread.isAlive();
     }
 
     private void onDataReadyToSave(File file) {
+        mLoaderPb.setVisibility(View.GONE);
         Intent i = new Intent();
         i.setAction(android.content.Intent.ACTION_VIEW);
         Uri contentUri = FileProvider.getUriForFile(MainActivity.this, "adry.graph.backup.sms", file);
