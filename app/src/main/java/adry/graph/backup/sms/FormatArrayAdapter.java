@@ -1,20 +1,46 @@
 package adry.graph.backup.sms;
 
-import android.content.Context;
+import android.database.DataSetObserver;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
-import android.widget.ArrayAdapter;
 import android.widget.CheckedTextView;
+import android.widget.ListAdapter;
 
 /**
  * Created by Audrey on 22/05/2016.
  * ArrayAdapter containing export formats
  */
-public class FormatArrayAdapter extends ArrayAdapter<ExportFormat> {
+class FormatArrayAdapter implements ListAdapter {
 
-    public FormatArrayAdapter(Context context) {
-        super(context, 0, ExportFormat.values());
+    @Override
+    public void registerDataSetObserver(DataSetObserver observer) {
+
+    }
+
+    @Override
+    public void unregisterDataSetObserver(DataSetObserver observer) {
+
+    }
+
+    @Override
+    public int getCount() {
+        return ExportFormat.values().length;
+    }
+
+    @Override
+    public Object getItem(int position) {
+        return ExportFormat.values()[position];
+    }
+
+    @Override
+    public long getItemId(int position) {
+        return ExportFormat.values()[position].ordinal();
+    }
+
+    @Override
+    public boolean hasStableIds() {
+        return false;
     }
 
     @Override
@@ -22,24 +48,36 @@ public class FormatArrayAdapter extends ArrayAdapter<ExportFormat> {
         CheckedTextView text = (CheckedTextView) convertView;
 
         if (text == null) {
-            text = (CheckedTextView) LayoutInflater.from(getContext()).inflate(android.R.layout.simple_spinner_dropdown_item, parent, false);
+            text = (CheckedTextView) LayoutInflater.from(parent.getContext()).inflate(android.R.layout.simple_spinner_dropdown_item, parent, false);
         }
 
-        text.setText(getItem(position).getLabel());
+        text.setText(ExportFormat.values()[position].getLabel());
 
         return text;
     }
 
     @Override
-    public View getDropDownView(int position, View convertView, ViewGroup parent) {
-        CheckedTextView text = (CheckedTextView) convertView;
+    public int getItemViewType(int position) {
+        return 0;
+    }
 
-        if (text == null) {
-            text = (CheckedTextView) LayoutInflater.from(getContext()).inflate(android.R.layout.simple_spinner_dropdown_item, parent, false);
-        }
+    @Override
+    public int getViewTypeCount() {
+        return 1;
+    }
 
-        text.setText(getItem(position).getLabel());
+    @Override
+    public boolean isEmpty() {
+        return false;
+    }
 
-        return text;
+    @Override
+    public boolean areAllItemsEnabled() {
+        return true;
+    }
+
+    @Override
+    public boolean isEnabled(int position) {
+        return true;
     }
 }

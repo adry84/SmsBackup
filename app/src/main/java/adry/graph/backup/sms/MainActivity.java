@@ -1,20 +1,25 @@
 package adry.graph.backup.sms;
 
+import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.net.Uri;
 import android.os.Bundle;
+import android.support.annotation.NonNull;
 import android.support.v4.app.ActivityCompat;
 import android.support.v4.content.ContextCompat;
 import android.support.v4.content.FileProvider;
+import android.support.v7.app.AlertDialog;
 import android.support.v7.app.AppCompatActivity;
 import android.support.v7.widget.LinearLayoutManager;
 import android.support.v7.widget.RecyclerView;
 import android.util.Log;
+import android.view.Menu;
+import android.view.MenuInflater;
+import android.view.MenuItem;
 import android.view.View;
 import android.widget.Button;
 import android.widget.ProgressBar;
-import android.widget.Spinner;
 import android.widget.Toast;
 
 import java.io.File;
@@ -26,10 +31,10 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
     private static final int REQUEST_CODE_ASK_PERMISSIONS = 123;
     private Button mSaveButton;
     private ProgressBar mLoaderPb;
-    private Spinner mExportFormatSpinner;
     private SmsListAdapter mSmsAdapter;
     private List<SMSData> mSmsList;
     private Thread mWriteSmsFileThread;
+    private ExportFormat mExportFormat = ExportFormat.CONVERSION_TYPE_TEXT;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -38,10 +43,6 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
 
         mLoaderPb = (ProgressBar) findViewById(R.id.activity_main_loader_pb);
         mLoaderPb.setVisibility(View.GONE);
-
-        mExportFormatSpinner = (Spinner) findViewById(R.id.activity_main_export_chooser_s);
-        FormatArrayAdapter dataAdapter = new FormatArrayAdapter(this);
-        mExportFormatSpinner.setAdapter(dataAdapter);
 
         mSaveButton = (Button) findViewById(R.id.activity_main_save_b);
         assert mSaveButton != null;
@@ -63,10 +64,13 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         getSms();
 
         mSaveButton.setOnClickListener(this);
+        mExportFormat = ExportFormat.CONVERSION_TYPE_TEXT;
+        updateSaveButtonText();
+
     }
 
     @Override
-    public void onRequestPermissionsResult(int requestCode, String[] permissions, int[] grantResults) {
+    public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults) {
         switch (requestCode) {
             case REQUEST_CODE_ASK_PERMISSIONS:
                 if (grantResults[0] == PackageManager.PERMISSION_GRANTED) {
@@ -81,6 +85,39 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
                 super.onRequestPermissionsResult(requestCode, permissions, grantResults);
         }
     }
+
+    @Override
+    public boolean onCreateOptionsMenu(Menu menu) {
+        MenuInflater inflater = getMenuInflater();
+        inflater.inflate(R.menu.main, menu);
+        return true;
+    }
+
+    @Override
+    public boolean onOptionsItemSelected(MenuItem item) {
+        if (item.getItemId() == R.id.action_choose_export_format) {
+            displayExportFormatSelectionDialog();
+        }
+        return super.onOptionsItemSelected(item);
+    }
+
+    private void displayExportFormatSelectionDialog() {
+        AlertDialog.Builder builder = new AlertDialog.Builder(this);
+        builder.setTitle(getString(R.string.export_prompt));
+        builder.setAdapter(new FormatArrayAdapter(), new DialogInterface.OnClickListener() {
+            @Override
+            public void onClick(DialogInterface dialog, int which) {
+                mExportFormat = ExportFormat.values()[which];
+                updateSaveButtonText();
+            }
+        });
+        builder.show();
+    }
+
+    private void updateSaveButtonText() {
+        mSaveButton.setText(getString(R.string.save, mExportFormat.getLabel()));
+    }
+
     private void getSms() {
         if(ContextCompat.checkSelfPermission(getBaseContext(), "android.permission.READ_SMS") == PackageManager.PERMISSION_GRANTED) {
             new Thread(new Runnable() {
@@ -124,8 +161,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
             public void run() {
                 try {
                     String smsListToString;
-                    ExportFormat typeConversion = (ExportFormat) mExportFormatSpinner.getSelectedItem();
-                    switch (typeConversion) {
+                    switch (mExportFormat) {
                         case CONVERSION_TYPE_CSV:
                             smsListToString = SMSDataUtils.SMSDataListToCSV(mSmsList);
                             break;
@@ -138,7 +174,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
                         default:
                             smsListToString = SMSDataUtils.SMSDataListToText(mSmsList);
                     }
-                    final File file = SmsBackupProvider.saveSmsBackupFile(MainActivity.this, smsListToString, typeConversion.getExtension());
+                    final File file = SmsBackupProvider.saveSmsBackupFile(MainActivity.this, smsListToString, mExportFormat.getExtension());
                     runOnUiThread(new Runnable() {
                         @Override
                         public void run() {
